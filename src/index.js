@@ -2,10 +2,11 @@ import Event from 'events';
 
 import { SocketServer } from './socket.js';
 import { constants } from './constants.js';
+import { Controller } from './controller.js';
 
 const eventEmitter = new Event();
 
-// // aqui estamos simulando o client;
+// aqui estamos simulando o client;
 // async function testServer() {
 //   const options = {
 //     port: 9898,
@@ -41,6 +42,14 @@ const server = await socketServer.initialize(eventEmitter);
 
 console.log("Server is running at:", server.address().port);
 
+const controller = new Controller({ socketServer });
+
+eventEmitter.on(
+  constants.event.NEW_USER_CONNECTED,
+  // estou passando o contexto this do controller para dentro do onNewConnnection pelo bind.
+  controller.onNewConnection.bind(controller)  
+)
+
 // // ouvindo o evento emitido la no socket.js;
 // eventEmitter.on(constants.event.NEW_USER_CONNECTED, (socket) => {
 //   console.log("New user connected", socket.id);
@@ -52,5 +61,3 @@ console.log("Server is running at:", server.address().port);
 //     socket.write('World');
 //   })
 // });
-
-// await testServer();
