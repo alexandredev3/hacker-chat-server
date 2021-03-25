@@ -49,6 +49,29 @@ export class Controller {
       constants.event.UPDATE_USERS, 
       currentUsers
     );
+
+    // comunicando a rede inteira que um novo usuario se conectou.
+    this.broadCast({
+      socketId,
+      roomId,
+      message: { id: socketId, username: userData.username },
+      event: constants.event.NEW_USER_CONNECTED
+    });
+  }
+
+  broadCast({ socketId, roomId, event, message, includeCurrentSocket = false }) {
+    const usersOnRoom = this.#rooms.get(roomId);
+
+    // para não mandar mensagens duplicadas.
+    for (const [key, user] of usersOnRoom) {
+      // se cair nesse if, e porque e o usuario que acabou de entrar ou mandou a mensagem.
+      if(!includeCurrentSocket && key === socketId) continue;
+
+      this.socketServer.sendMessage(user.socket, event, message);
+    }
+
+    // mandar mensagens para todo mundo que esta na sala.
+
   }
 
   #joinUserOnRoom(roomId, user) {
@@ -75,7 +98,7 @@ export class Controller {
         // todos os nossos eventos vai receber um id e uma mensagem.
         this[event](id, message);
       } catch (error) {
-        console.error(`event format invalid ${String(data)}`);          
+        console.error(`event format invalid ${String(data)} >>>> ${error}`);          
       }
 
 
