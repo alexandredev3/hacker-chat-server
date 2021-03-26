@@ -50,7 +50,7 @@ export class Controller {
       currentUsers
     );
 
-    // comunicando a rede inteira que um novo usuario se conectou.
+    // quando um usuario entra, a lista de todo mundo que esta na sala atualiza.
     this.broadCast({
       socketId,
       roomId,
@@ -82,9 +82,27 @@ export class Controller {
     return usersOnRoom;
   }
 
+  #logoutUser(id, roomId) {
+    this.#users.delete(id); // deletando usuario.
+    const usersOnRoom = this.#rooms.get(roomId);
+    usersOnRoom.delete(id); // deletando usuario da sala.
+
+    this.#rooms.set(roomId, usersOnRoom);
+  }
+
   #onSocketClosed(id) {
-    return (data) => {
-      console.log("onSocketClosed >>", id)
+    return (_) => {
+      const { username, roomId } = this.#users.get(id);
+      console.log(username, 'disconncted', id);
+
+      this.#logoutUser(id, roomId);
+
+      this.broadCast({
+        roomId,
+        message: { id, roomId },
+        socketId: id,
+        event: constants.event.DISCONNECT_USER,
+      })
     }
   }  
   
@@ -100,9 +118,22 @@ export class Controller {
       } catch (error) {
         console.error(`event format invalid ${String(data)} >>>> ${error}`);          
       }
-
-
     }
+  }
+
+  message(socketId, data) {
+    const { username, roomId } = this.#users.get(socketId);
+
+    // o usuario vai mandar a mensagem, a mensagem vai vim para o servidor,
+    // o servidor vai comunicar todos os usuarios da rede manda a mensagem,
+    // depois o client vai receber essa mensagem e atualizar o component.
+    this.broadCast({
+      roomId, 
+      socketId,
+      event: constants.event.MESSAGE,
+      message: { username, message: data },
+      includeCurrentSocket: true,
+    })
   }
 
   #updateGlobalUserData(socketId, userData) {
